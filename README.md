@@ -1,5 +1,5 @@
 <h1><p align=center>LuaCTF</p></h1>
-<h3><p align=center>From scratch CTF platform, put together in a weekend, very likely not secure.</p></h3>
+<h3><p align=center>Lightweight & fast self made CTF platform built from scratch using Lua</p></h3>
 <br><br>
 
 ## Deployment
@@ -26,3 +26,7 @@ Start server using: ```./run.sh```
 To customize CTF looks/branding - modify the template files in LuaCTF/templates
 
 To customize CTF challenges - modify the challenges.lua file or put files in the LuaCTF/static directory
+
+## Note
+
+This project was put together in a weekend. It is full of ugly code / hacks and is very likely not secure. Use with caution.
