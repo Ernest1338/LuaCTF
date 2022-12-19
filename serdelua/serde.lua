@@ -36,9 +36,7 @@ function Serde.deserialize(data)
         tmp_tab.data = {}
         for i = 2, #tab do
             local data_split = string_split(tab[i], ":")
-            -- TODO: (tamper proofing)
-            -- handle case when tab[i] contains more than one ":"
-            -- key and value can not be empty
+            -- FIXME: key and value can not be empty
             table.insert(tmp_tab.data, {data_split[1], data_split[2]})
         end
         table.insert(deserialized, tmp_tab)
