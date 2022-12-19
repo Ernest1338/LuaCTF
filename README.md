@@ -3,7 +3,22 @@
 <br><br>
 
 ## Deployment
-Prerequisites: `luajit`, `lua-http`
+Dependencies: `luajit`, `lua-http`
+
+Instructions on installing dependencies:
+
+For debian/ubuntu linux:
+```
+sudo apt install luajit lua-http
+```
+For alpine linux:
+```
+sudo apk add luajit lua5.1-http
+```
+For arch linux:
+```
+sudo pacman -S luajit lua51-http
+```
 
 Start server using: ```./run.sh```
 
