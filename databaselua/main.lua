@@ -28,6 +28,8 @@ local function main()
     database.insert("testing", {"test1", "test2"})
     print(dump_table(database.db))
 
+    print(dump_table(database.get_table("users")))
+
     print(database.get("testing", "test1"))
 end
 

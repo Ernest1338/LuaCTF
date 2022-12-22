@@ -2,14 +2,14 @@
 
 local serde = require("serde")
 
-function commit_db_change(database, file_name)
-    local file_handle = io.open(file_name, "w")
+local function commit_db_change(database, file_name)
+    local file_handle = assert(io.open(file_name, "w"))
     file_handle:write(serde.serialize(database))
     file_handle:close()
 end
 
-function create_db(file_name, tables)
-    local file_handle = io.open(file_name, "w")
+local function create_db(file_name, tables)
+    local file_handle = assert(io.open(file_name, "w"))
     local database = ""
 
     for i, tab in pairs(tables) do
@@ -91,6 +91,15 @@ function DB.new(file_name, tables)
                 return nil
             end
         end
+    end
+
+    function db_obj.get_table(tab_name)
+        for _, tab in pairs(db_obj.db) do
+            if tab.name == tab_name then
+                return tab.data
+            end
+        end
+        return nil
     end
 
     function db_obj.exists(tab_name, key)
