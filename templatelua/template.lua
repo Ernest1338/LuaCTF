@@ -17,7 +17,7 @@ local function load_template(template_name)
     local template_handle = assert(io.open("../templates/" .. template_name .. ".html", "r"))
     template = template_handle:read("*a")
     template_handle:close()
-    table.insert(Loaded_templates, { template_name, template })
+    table.insert(Loaded_templates, { template_name, template }) -- comment out to disable caching
     return template
 end
 
@@ -55,6 +55,9 @@ function Template.render(template_name, data)
         return template
     end
     local template_split = split_template(template)
+    if type(data) ~= "table" then
+        return template_split[1] .. data .. template_split[2]
+    end
     local template_rendered = ""
 
     for i, chunk in pairs(template_split) do
