@@ -139,7 +139,11 @@ local function reply(_, stream) -- _ = server
                 local file_handle = io.open(endpoint[2] .. filename, "rb")
                 if file_handle == nil then break end
                 res_headers:append(":status", "200")
-                res_headers:append("content-type", "application/octet-stream")
+                if filename:match(".html$") then
+                    res_headers:append("content-type", "text/html")
+                else
+                    res_headers:append("content-type", "application/octet-stream")
+                end
                 assert(stream:write_headers(res_headers, req_method == "HEAD"))
                 assert(stream:write_body_from_file(file_handle))
                 return
