@@ -101,63 +101,61 @@ local function reply(_, stream) -- _ = server
     if req_method ~= "HEAD" then
         local req_endpoint = req_headers["_data"][2]["value"]
         -- check for normal endpoints
-        if #webjit.endpoints > 0 then
-            for _, endpoint in pairs(webjit.endpoints) do
-                if endpoint_matches(req_endpoint, endpoint[1]) then
-                    local callback_return
-                    local cookies = parse_cookies(req_headers:get("cookie"))
-                    local endpoint_params = get_endpoint_params(req_endpoint, endpoint[1])
-                    if #endpoint_params ~= 0 then
-                        callback_return = endpoint[2](endpoint_params, cookies)
-                    else
-                        callback_return = endpoint[2](cookies)
-                    end
-                    -- At this point we know that it's going to be status 200
-                    res_headers:append(":status", "200")
-                    if type(callback_return) == "table" then
-                        res_headers:append("content-type", callback_return[2])
-                    else
-                        res_headers:append("content-type", "text/plain")
-                    end
-                    -- Send headers to client; end the stream immediately if this was a HEAD request
-                    assert(stream:write_headers(res_headers, req_method == "HEAD"))
-                    -- Send the data
-                    if type(callback_return) == "table" then
-                        assert(stream:write_chunk(callback_return[1], true))
-                    else
-                        assert(stream:write_chunk(callback_return, true))
-                    end
-                    return
+        for _, endpoint in pairs(webjit.endpoints) do
+            if endpoint_matches(req_endpoint, endpoint[1]) then
+                local callback_return
+                local cookies = parse_cookies(req_headers:get("cookie"))
+                local endpoint_params = get_endpoint_params(req_endpoint, endpoint[1])
+                if #endpoint_params ~= 0 then
+                    callback_return = endpoint[2](endpoint_params, cookies)
+                else
+                    callback_return = endpoint[2](cookies)
                 end
+                -- At this point we know that it's going to be status 200
+                res_headers:append(":status", "200")
+                if type(callback_return) == "table" then
+                    res_headers:append("content-type", callback_return[2])
+                else
+                    res_headers:append("content-type", "text/plain")
+                end
+                -- Send headers to client; end the stream immediately if this was a HEAD request
+                assert(stream:write_headers(res_headers, req_method == "HEAD"))
+                -- Send the data
+                if type(callback_return) == "table" then
+                    assert(stream:write_chunk(callback_return[1], true))
+                else
+                    assert(stream:write_chunk(callback_return, true))
+                end
+                return
             end
         end
         -- check for static file hosting
-        if #webjit.static_endpoints > 0 then
-            for _, endpoint in pairs(webjit.static_endpoints) do
-                local endpoint_split = split(endpoint[1], "/")
-                if #endpoint_split == 0 then
-                    endpoint_split = { "/" }
+        for _, endpoint in pairs(webjit.static_endpoints) do
+            local endpoint_split = split(endpoint[1], "/")
+            if #endpoint_split == 0 then
+                endpoint_split = { "/" }
+            end
+            local endpoint_main = endpoint_split[1]
+            local req_endpoint_split = split(req_endpoint, "/")
+            if #req_endpoint_split < 2 then
+                table.insert(req_endpoint_split, 1, "/")
+            end
+            if endpoint_main == req_endpoint_split[1] then
+                -- TODO: fix serving default index.html (when requesting a dir not file) at non "/" endpoints
+                local filename = req_endpoint_split[2]
+                if filename == nil then filename = "index.html" end
+                if string.find(filename, "%.%.") then break end
+                local file_handle = io.open(endpoint[2] .. filename, "rb")
+                if file_handle == nil then break end
+                res_headers:append(":status", "200")
+                if filename:match(".html$") then
+                    res_headers:append("content-type", "text/html")
+                else
+                    res_headers:append("content-type", "application/octet-stream")
                 end
-                local endpoint_main = endpoint_split[1]
-                local req_endpoint_split = split(req_endpoint, "/")
-                if #req_endpoint_split == 1 then
-                    table.insert(req_endpoint_split, 1, "/")
-                end
-                if endpoint_main == req_endpoint_split[1] or (endpoint == "/" and req_endpoint_split[1] == "/") then
-                    local filename = req_endpoint_split[2]
-                    if filename == nil or string.find(filename, "%.%.") then break end
-                    local file_handle = io.open(endpoint[2] .. filename, "rb")
-                    if file_handle == nil then break end
-                    res_headers:append(":status", "200")
-                    if filename:match(".html$") then
-                        res_headers:append("content-type", "text/html")
-                    else
-                        res_headers:append("content-type", "application/octet-stream")
-                    end
-                    assert(stream:write_headers(res_headers, req_method == "HEAD"))
-                    assert(stream:write_body_from_file(file_handle))
-                    return
-                end
+                assert(stream:write_headers(res_headers, req_method == "HEAD"))
+                assert(stream:write_body_from_file(file_handle))
+                return
             end
         end
         -- Default 404 page
