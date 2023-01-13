@@ -7,8 +7,9 @@ local challenges = require("challenges")
 local log = require("log")
 
 -- CONFIGURATION
-local log_requests_to_stdout = true
+local log_requests_to_stdout = false
 local log_events_to_file = true
+local enable_caching = false -- EXPERIMENTAL
 
 Database = db.new("database.db", { "users", "emails", "scoreboard", "solutions" })
 Logger = log.new("logs.txt", log_events_to_file)
@@ -210,6 +211,10 @@ local function register_user_endpoint(data, cookies)
 
     add_new_user(username, email, password_hash)
 
+    if enable_caching then
+        web.invalidate_cache()
+    end
+
     to_return = "Registered successfully"
     ::done::
     return { template.render("empty",
@@ -246,6 +251,11 @@ local function login_user_endpoint(data, cookies)
         username ..
         "; path=/\"; document.cookie = \"ctf_auth_key=" ..
         auth_key .. "; path=/\";</script>"
+
+    if enable_caching then
+        web.invalidate_cache()
+    end
+
     to_return = "Logged in successfully!"
     logged_in = true
     ::done::
@@ -355,6 +365,11 @@ end
 
 local function logout_endpoint(cookies)
     Logger.log(string.format("User \"%s\" logged out", get_cookie(cookies, "ctf_user")))
+
+    if enable_caching then
+        web.invalidate_cache()
+    end
+
     return { template.render("empty",
         { handle_menu(cookies, false),
             "<article><h2 style=\"text-align: center;\">Logged out</h2></article><script>document.cookie = \"ctf_user=; Max-age=0\"; document.cookie = \"ctf_auth_key=; Max-age=0\";history.pushState({}, null, document.URL.split(\"?\")[0]);</script>" }),
@@ -362,22 +377,22 @@ local function logout_endpoint(cookies)
 end
 
 local function main()
-    web.add("/", index_endpoint)
-    web.add("/users", users_endpoint)
-    web.add("/scoreboard", scoreboard_endpoint)
+    web.add("/", index_endpoint, true)
+    web.add("/users", users_endpoint, true)
+    web.add("/scoreboard", scoreboard_endpoint, true)
     web.add("/challenges", challenges_endpoint)
-    web.add("/register", register_endpoint)
-    web.add("/login", login_endpoint)
+    web.add("/register", register_endpoint, true)
+    web.add("/login", login_endpoint, true)
     web.add("/register_user/<>", register_user_endpoint)
     web.add("/login_user/<>", login_user_endpoint)
     web.add("/flag_submit/<>", flag_submit_endpoint)
     web.add("/profile", profile_endpoint)
-    web.add("/logout", logout_endpoint)
+    web.add("/logout", logout_endpoint, true)
     web.host_static_files("/static", "../static/")
 
     Logger.log("Server started")
 
-    web.run("0.0.0.0", "8000", log_requests_to_stdout)
+    web.run("0.0.0.0", "8000", log_requests_to_stdout, enable_caching)
 end
 
 main()
