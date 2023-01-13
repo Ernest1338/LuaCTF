@@ -2,8 +2,6 @@ local http_server = require "http.server"
 local http_headers = require "http.headers"
 
 -- TODO:
--- cache
--- improve perf when using many params (caching may help)
 -- ? cqueues backend (rewrite)
 
 local webjit = {}
@@ -11,6 +9,8 @@ webjit.endpoints = {}
 webjit.callbacks = {}
 webjit.static_endpoints = {}
 webjit.log = true
+webjit.enable_caching = false
+webjit.cache = {}
 
 local escape_char = string.char(27)
 Color = {
@@ -103,28 +103,49 @@ local function reply(_, stream) -- _ = server
         -- check for normal endpoints
         for _, endpoint in pairs(webjit.endpoints) do
             if endpoint_matches(req_endpoint, endpoint[1]) then
-                local callback_return
-                local cookies = parse_cookies(req_headers:get("cookie"))
-                local endpoint_params = get_endpoint_params(req_endpoint, endpoint[1])
-                if #endpoint_params ~= 0 then
-                    callback_return = endpoint[2](endpoint_params, cookies)
+                local data_from_cache = webjit.get_from_cache(endpoint[1])
+                if data_from_cache ~= nil and webjit.enable_caching and endpoint[3] then
+                    res_headers:append(":status", "200")
+                    if type(data_from_cache) == "table" then
+                        res_headers:append("content-type", data_from_cache[2])
+                    else
+                        res_headers:append("content-type", "text/plain")
+                    end
+                    -- Send headers to client; end the stream immediately if this was a HEAD request
+                    assert(stream:write_headers(res_headers, req_method == "HEAD"))
+                    -- Send the data
+                    if type(data_from_cache) == "table" then
+                        assert(stream:write_chunk(data_from_cache[1], true))
+                    else
+                        assert(stream:write_chunk(data_from_cache, true))
+                    end
                 else
-                    callback_return = endpoint[2](cookies)
-                end
-                -- At this point we know that it's going to be status 200
-                res_headers:append(":status", "200")
-                if type(callback_return) == "table" then
-                    res_headers:append("content-type", callback_return[2])
-                else
-                    res_headers:append("content-type", "text/plain")
-                end
-                -- Send headers to client; end the stream immediately if this was a HEAD request
-                assert(stream:write_headers(res_headers, req_method == "HEAD"))
-                -- Send the data
-                if type(callback_return) == "table" then
-                    assert(stream:write_chunk(callback_return[1], true))
-                else
-                    assert(stream:write_chunk(callback_return, true))
+                    local callback_return
+                    local cookies = parse_cookies(req_headers:get("cookie"))
+                    local endpoint_params = get_endpoint_params(req_endpoint, endpoint[1])
+                    if #endpoint_params ~= 0 then
+                        callback_return = endpoint[2](endpoint_params, cookies)
+                    else
+                        callback_return = endpoint[2](cookies)
+                    end
+                    -- At this point we know that it's going to be status 200
+                    res_headers:append(":status", "200")
+                    if type(callback_return) == "table" then
+                        res_headers:append("content-type", callback_return[2])
+                    else
+                        res_headers:append("content-type", "text/plain")
+                    end
+                    -- Send headers to client; end the stream immediately if this was a HEAD request
+                    assert(stream:write_headers(res_headers, req_method == "HEAD"))
+                    -- Send the data
+                    if type(callback_return) == "table" then
+                        assert(stream:write_chunk(callback_return[1], true))
+                    else
+                        assert(stream:write_chunk(callback_return, true))
+                    end
+                    if webjit.enable_caching and endpoint[3] then
+                        webjit.cache_result(endpoint[1], callback_return)
+                    end
                 end
                 return
             end
@@ -166,15 +187,55 @@ local function reply(_, stream) -- _ = server
     end
 end
 
-webjit.add = function(endpoint, callback)
-    table.insert(webjit.endpoints, { endpoint, callback })
+function webjit.add(endpoint, callback, should_cache)
+    local l_should_cache = should_cache
+    if should_cache == nil then
+        l_should_cache = false
+    end
+    table.insert(webjit.endpoints, { endpoint, callback, l_should_cache })
 end
 
-webjit.host_static_files = function(endpoint, dir)
+function webjit.host_static_files(endpoint, dir)
     table.insert(webjit.static_endpoints, { endpoint, dir })
 end
 
-webjit.run = function(host, port, log)
+function webjit.invalidate_cache(endpoint)
+    if endpoint == nil then
+        -- print("whole cache invalidated")
+        webjit.cache = {}
+    end
+    for i = 1, #webjit.cache do
+        if webjit.cache[i][1] == endpoint then
+            -- print("cache endpoint: " .. endpoint .. " invalidated")
+            table.remove(webjit.cache, i)
+            return
+        end
+    end
+end
+
+function webjit.get_from_cache(endpoint)
+    for i = 1, #webjit.cache do
+        if webjit.cache[i][1] == endpoint then
+            webjit.cache[i][3] = webjit.cache[i][3] - 1
+            if webjit.cache[i][3] == 0 then
+                webjit.invalidate_cache(endpoint)
+                return nil
+            end
+            -- print("retrieved from cache endpoint: " .. endpoint)
+            return webjit.cache[i][2]
+        end
+    end
+    -- print("cache miss on endpoint: " .. endpoint)
+    return nil
+end
+
+function webjit.cache_result(endpoint, callback)
+    -- print("caching endpoint: " .. endpoint)
+    -- 100 reqs is the default cache life time
+    table.insert(webjit.cache, { endpoint, callback, 100 })
+end
+
+function webjit.run(host, port, log, enable_caching)
     local server = assert(http_server.listen {
         host = host;
         port = port;
@@ -191,9 +252,14 @@ webjit.run = function(host, port, log)
         end;
     })
 
-    -- Enable logging
+    -- Disable logging if choosen
     if log == false then
         webjit.log = false
+    end
+
+    -- Enable caching if choosen
+    if enable_caching == true then
+        webjit.enable_caching = true
     end
 
     -- Manually call :listen() so that we are bound before calling :localname()
