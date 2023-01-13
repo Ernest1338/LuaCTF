@@ -7,7 +7,7 @@ local challenges = require("challenges")
 local log = require("log")
 
 -- CONFIGURATION
-local log_requests_to_stdout = false
+local log_requests_to_stdout = true
 local log_events_to_file = true
 local enable_caching = false -- EXPERIMENTAL
 
