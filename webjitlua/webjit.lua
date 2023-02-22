@@ -2,7 +2,7 @@ local http_server = require "http.server"
 local http_headers = require "http.headers"
 
 -- TODO:
--- ? cqueues backend (rewrite)
+-- ? socket (or cqueues) backend (rewrite)
 
 local webjit = {}
 webjit.endpoints = {}
@@ -61,6 +61,10 @@ local function get_endpoint_params(endpoint, matching_for)
         if matching_endpoint_split[i] == "<>" then
             table.insert(params, endpoint_split[i])
         end
+    end
+    -- if there is only one parameter, return it instead of a table
+    if #params == 1 then
+        return params[1]
     end
     return params
 end
