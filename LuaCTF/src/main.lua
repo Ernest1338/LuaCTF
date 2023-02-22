@@ -192,7 +192,7 @@ local function hash(data)
 end
 
 local function register_user_endpoint(data, cookies)
-    local data_split = split_get_params(data[1])
+    local data_split = split_get_params(data)
     local to_return
     local username = data_split[1][2]
     local email = data_split[2][2]
@@ -225,7 +225,7 @@ local function register_user_endpoint(data, cookies)
 end
 
 local function login_user_endpoint(data, cookies)
-    local data_split = split_get_params(data[1])
+    local data_split = split_get_params(data)
     local to_return
     local set_cookies = ""
     local logged_in = false
@@ -289,7 +289,7 @@ local function flag_decode(flag)
 end
 
 local function flag_submit_endpoint(data, cookies)
-    local data_split = split_get_params(data[1])
+    local data_split = split_get_params(data)
     local to_return
     local flag = flag_decode(data_split[1][2])
     local challenge_id = tonumber(data_split[2][2])
