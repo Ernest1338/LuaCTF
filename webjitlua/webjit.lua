@@ -66,6 +66,10 @@ local function get_endpoint_params(endpoint, matching_for)
     if #params == 1 then
         return params[1]
     end
+    if #params == 0 then
+        -- nil is more apropriate than empty table in this case
+        return nil
+    end
     return params
 end
 
@@ -127,7 +131,7 @@ local function reply(_, stream) -- _ = server
                     local callback_return
                     local cookies = parse_cookies(req_headers:get("cookie"))
                     local endpoint_params = get_endpoint_params(req_endpoint, endpoint[1])
-                    if #endpoint_params ~= 0 then
+                    if endpoint_params ~= nil then
                         callback_return = endpoint[2](endpoint_params, cookies)
                     else
                         callback_return = endpoint[2](cookies)
