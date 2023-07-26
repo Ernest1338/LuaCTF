@@ -183,12 +183,13 @@ local function split_get_params(data)
 end
 
 local function hash(data)
-    -- TODO: better hash function
-    local out_hash = 0
-    for chr in data:gmatch(".") do
-        out_hash = out_hash + string.byte(chr)
+    -- DJB2 hashing algorithm
+    local out = 5381
+    for i = 1, #data do
+        local char = string.byte(data, i)
+        out = (out * 33) ~ char
     end
-    return out_hash
+    return out
 end
 
 local function register_user_endpoint(data, cookies)
@@ -220,7 +221,9 @@ local function register_user_endpoint(data, cookies)
     return { template.render("empty",
         { handle_menu(cookies),
             "<article><h2 style=\"text-align: center;\">" ..
-                to_return .. "</h2></article><script>history.pushState({}, null, document.URL.split(\"?\")[0]);</script>" .. template.render("register") }),
+            to_return ..
+            "</h2></article><script>history.pushState({}, null, document.URL.split(\"?\")[0]);</script>" ..
+            template.render("register") }),
         "text/html" }
 end
 
@@ -262,9 +265,9 @@ local function login_user_endpoint(data, cookies)
     return { template.render("empty",
         { handle_menu(cookies, logged_in),
             "<article><h2 style=\"text-align: center;\">" ..
-                to_return ..
-                "</h2></article><script>history.pushState({}, null, document.URL.split(\"?\")[0]);</script>" ..
-                set_cookies .. template.render("login") }),
+            to_return ..
+            "</h2></article><script>history.pushState({}, null, document.URL.split(\"?\")[0]);</script>" ..
+            set_cookies .. template.render("login") }),
         "text/html" }
 end
 
@@ -298,7 +301,7 @@ local function flag_submit_endpoint(data, cookies)
     if username == nil then
         return { template.render("empty", { handle_menu(cookies), template.render("challenges",
             { "<article><h2 style=\"text-align: center;\">You need to log in, to submit a flag!</h2></article>" ..
-                render_challenges(cookies) }) }),
+            render_challenges(cookies) }) }),
             "text/html" }
     end
     local previous_points = Database.get("scoreboard", username)
@@ -353,13 +356,13 @@ local function profile_endpoint(cookies)
     return { template.render("empty",
         { handle_menu(cookies),
             "<article><h2 style=\"text-align: center;\">" ..
-                username ..
-                "</h2></article><article><h3 style=\"text-align: center; margin-top: 1em;\">Points: " ..
-                points ..
-                "</h3></article><article><h3 style=\"text-align: center; margin-top: 1em;\">Position on the scoreboard: "
-                ..
-                user_position ..
-                "</h3></article>" }),
+            username ..
+            "</h2></article><article><h3 style=\"text-align: center; margin-top: 1em;\">Points: " ..
+            points ..
+            "</h3></article><article><h3 style=\"text-align: center; margin-top: 1em;\">Position on the scoreboard: "
+            ..
+            user_position ..
+            "</h3></article>" }),
         "text/html" }
 end
 
