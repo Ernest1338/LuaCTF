@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 cd LuaCTF/src &&
 luajit main.lua &&
