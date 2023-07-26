@@ -182,12 +182,14 @@ local function split_get_params(data)
     return split
 end
 
+local bit = require("bit")
+
 local function hash(data)
     -- DJB2 hashing algorithm
     local out = 5381
     for i = 1, #data do
         local char = string.byte(data, i)
-        out = (out * 33) ~ char
+        out = bit.bxor((out * 33), char)
     end
     return out
 end
