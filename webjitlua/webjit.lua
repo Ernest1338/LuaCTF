@@ -179,6 +179,10 @@ local function reply(_, stream) -- _ = server
                 res_headers:append(":status", "200")
                 if filename:match(".html$") then
                     res_headers:append("content-type", "text/html")
+                elseif filename:match(".css$") then
+                    res_headers:append("content-type", "text/css")
+                elseif filename:match(".js$") then
+                    res_headers:append("content-type", "text/javascript")
                 else
                     res_headers:append("content-type", "application/octet-stream")
                 end
